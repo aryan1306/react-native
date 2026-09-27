@@ -110,6 +110,7 @@ RCTSendScrollEventForNativeAnimations_DEPRECATED(UIScrollView *scrollView, NSInt
   __weak UIView *_contentView;
 
   CGRect _prevFirstVisibleFrame;
+  CGPoint _prevContentOffset;
   __weak UIView *_firstVisibleView;
   NSInteger _firstVisibleViewTag;
 
@@ -708,6 +709,7 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
   self.frame = oldFrame;
   _contentView = nil;
   _prevFirstVisibleFrame = CGRectZero;
+  _prevContentOffset = CGPointZero;
   _firstVisibleView = nil;
   _firstVisibleViewTag = 0;
   _virtualViewContainerState = nil;
@@ -1077,6 +1079,8 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
     }
     if (hasNewView || ii == _contentView.subviews.count - 1) {
       _prevFirstVisibleFrame = subview.frame;
+      // A smaller content size can clamp the live offset before the adjustment.
+      _prevContentOffset = _scrollView.contentOffset;
       _firstVisibleView = subview;
       _firstVisibleViewTag = subview.tag;
       break;
@@ -1120,9 +1124,9 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
   if (horizontal) {
     CGFloat deltaX = _firstVisibleView.frame.origin.x - _prevFirstVisibleFrame.origin.x;
     if (ABS(deltaX) > 0.5) {
-      CGFloat x = _scrollView.contentOffset.x;
+      CGFloat x = _prevContentOffset.x;
       [self _forceDispatchNextScrollEvent];
-      _scrollView.contentOffset = CGPointMake(_scrollView.contentOffset.x + deltaX, _scrollView.contentOffset.y);
+      _scrollView.contentOffset = CGPointMake(x + deltaX, _scrollView.contentOffset.y);
       if (autoscrollThreshold) {
         // If the offset WAS within the threshold of the start, animate to the start.
         if (x <= autoscrollThreshold.value()) {
@@ -1134,9 +1138,9 @@ static inline UIViewAnimationOptions animationOptionsWithCurve(UIViewAnimationCu
     CGRect newFrame = _firstVisibleView.frame;
     CGFloat deltaY = newFrame.origin.y - _prevFirstVisibleFrame.origin.y;
     if (ABS(deltaY) > 0.5) {
-      CGFloat y = _scrollView.contentOffset.y;
+      CGFloat y = _prevContentOffset.y;
       [self _forceDispatchNextScrollEvent];
-      _scrollView.contentOffset = CGPointMake(_scrollView.contentOffset.x, _scrollView.contentOffset.y + deltaY);
+      _scrollView.contentOffset = CGPointMake(_scrollView.contentOffset.x, y + deltaY);
       if (autoscrollThreshold) {
         // If the offset WAS within the threshold of the start, animate to the start.
         if (y <= autoscrollThreshold.value()) {
